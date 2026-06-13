@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>逗點教室・行事曆登入</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#1a2756;--gold:#c9a227;--bg:#f6f7fb;--ink:#1f2430;--muted:#6b7280;--line:#e6e8ef;--err:#cf3b2d;}
+*{box-sizing:border-box;}
+body{margin:0;font-family:"Noto Sans TC",system-ui,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;display:flex;align-items:center;justify-content:center;}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:36px 32px;width:100%;max-width:380px;box-shadow:0 8px 30px rgba(26,39,86,.08);}
+.brand{display:flex;align-items:baseline;gap:9px;justify-content:center;margin-bottom:6px;}
+.brand .dot{width:10px;height:10px;border-radius:50%;background:var(--gold);}
+.brand h1{font-family:"Noto Serif TC",serif;font-weight:700;font-size:20px;margin:0;color:var(--navy);}
+.sub{text-align:center;color:var(--muted);font-size:13px;margin-bottom:28px;}
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px;margin-top:14px;}
+input{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-family:inherit;}
+input:focus{outline:2px solid var(--gold);border-color:var(--gold);}
+button{width:100%;margin-top:24px;padding:12px;border:0;border-radius:10px;background:var(--navy);color:#fff;font-size:15px;font-weight:500;cursor:pointer;font-family:inherit;}
+button:hover{background:#27345f;}
+button:disabled{opacity:.6;cursor:default;}
+.err{color:var(--err);font-size:13px;margin-top:12px;min-height:18px;text-align:center;}
+.hint{color:#9aa1ad;font-size:12px;margin-top:18px;text-align:center;line-height:1.6;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="brand"><span class="dot"></span><h1>逗點教室</h1></div>
+  <div class="sub">年度行事曆大表・請先登入</div>
+
+  <label for="email">帳號（信箱）</label>
+  <input id="email" type="text" placeholder="例如：riven.z@commainnov.com" autocomplete="username">
+
+  <label for="pw">密碼</label>
+  <input id="pw" type="password" placeholder="預設密碼：0000" autocomplete="current-password">
+
+  <button id="loginBtn" onclick="doLogin()">登入</button>
+  <div class="err" id="err"></div>
+  <div class="hint">初次登入請使用您的信箱帳號<br>預設密碼為 0000</div>
+</div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbxhXK1xr4_D60rPbRvvxU11fCVFzx5q_sFw592lwFnxY_jYM4c1yh9uLly3552GE7y8/exec";
+
+async function doLogin(){
+  const email = document.getElementById('email').value.trim();
+  const pw = document.getElementById('pw').value.trim();
+  const err = document.getElementById('err');
+  const btn = document.getElementById('loginBtn');
+
+  if(!email || !pw){
+    err.textContent = "請輸入帳號與密碼。";
+    return;
+  }
+
+  err.textContent = "";
+  btn.disabled = true;
+  btn.textContent = "登入中...";
+
+  try{
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ email: email, password: pw })
+    });
+    const data = await res.json();
+
+    if(data.ok){
+      sessionStorage.setItem('commaCalendarUser', data.email);
+      window.location.href = "calendar.html";
+    } else {
+      err.textContent = data.msg === "密碼錯誤" ? "密碼錯誤（提示：預設密碼為 0000）。"
+                        : data.msg === "帳號不存在" ? "帳號不存在，請確認信箱是否輸入正確。"
+                        : "登入失敗，請再試一次。";
+    }
+  } catch(e){
+    err.textContent = "無法連線到驗證伺服器，請檢查網路後再試一次。";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "登入";
+  }
+}
+
+document.getElementById('pw').addEventListener('keydown', function(e){
+  if(e.key === 'Enter') doLogin();
+});
+</script>
+</body>
+</html>
