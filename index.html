@@ -265,7 +265,7 @@ footer{margin-top:26px;font-size:12px;color:var(--hint);text-align:center;}
         <label><input type="checkbox" class="edv" value="國中">國中</label>
         <label><input type="checkbox" class="edv" value="高中">高中</label></div>
       <label>第二層分類</label>
-      <select id="evCat"><option value="">無</option><option>活動</option><option>競賽</option><option>公關活動</option></select>
+      <select id="evCat"><option value="">無</option></select>
     </div>
     <div class="pwmsg" id="evMsg"></div>
     <div class="mrow"><button class="del hide" id="evDel" onclick="delFromEvEditor()">刪除</button><button class="cancel" onclick="closeEvEditor()">取消</button><button class="ok" onclick="saveEvEditor()">完成</button></div>
@@ -287,6 +287,8 @@ let view='cal';
 let calYear=2026, calMonth=6;
   let selDivs=new Set(), selCats=new Set();
   const DIVS4=['全體','國小','國中','高中'];
+  /* 事件第二層分類（新增類別改這裡即可，篩選鈕與編輯下拉都會同步） */
+  const CATS=['活動','競賽','公關活動','影音行銷'];
 if(TY===2026&&TM>=6)calMonth=TM; else if(TY===2027&&TM<=6){calYear=2027;calMonth=TM;}
 /* 舊版節日關鍵字：僅用於清除雲端殘留的節日事件，不再參與分類 */
 const FEST=['放假','補假','連假','春節','除夕','過年','端午','中秋','元旦','清明','兒童節','母親節','父親節','聖誕','雙十','國慶','教師節','勞動節','跨年','和平紀念','光復','行憲','彈性','調整放假','228'];
@@ -295,7 +297,7 @@ function evCls(e){if(e.kind==='教培')return 'etr';const s=new Set(e.divs);if(s
 function evType(e){return e.kind==='教培'?'教培':'div';}
 function normDivs(divs){const s=new Set();(divs||[]).forEach(d=>{if(d==='全體'){s.add('國小');s.add('國中');s.add('高中');}else s.add(d);});if(s.size===0){s.add('國小');s.add('國中');s.add('高中');}return s;}
 function evMatch(e){const hasDiv=DIVS4.some(x=>selDivs.has(x));if(selDivs.size===0&&selCats.size===0)return true;const t=evType(e);if(t==='教培')return selDivs.has('教培');if(!hasDiv)return false;const sel=new Set();selDivs.forEach(x=>{if(x==='全體'){sel.add('國小');sel.add('國中');sel.add('高中');}else if(DIVS4.includes(x))sel.add(x);});const es=normDivs(e.divs);if(![...es].some(x=>sel.has(x)))return false;if(selCats.size===0)return true;return selCats.has(e.cat||'');}
-function renderFilter(){const l1=['全部','全體','國小','國中','高中','教培'];document.getElementById('dfilter').innerHTML=l1.map(v=>{const on=(v==='全部')?(selDivs.size===0&&selCats.size===0):selDivs.has(v);return `<button class="dpill${on?' on':''}" onclick="toggleL1('${v}')">${v}</button>`;}).join('');const showL2=DIVS4.some(x=>selDivs.has(x));const w=document.getElementById('dfilter2');if(showL2){w.classList.remove('hide');w.innerHTML='<span class="l2lbl">細分</span>'+['活動','競賽','公關活動'].map(c=>`<button class="dpill l2${selCats.has(c)?' on':''}" onclick="toggleL2('${c}')">${c}</button>`).join('');}else{w.classList.add('hide');w.innerHTML='';}}
+function renderFilter(){const l1=['全部','全體','國小','國中','高中','教培'];document.getElementById('dfilter').innerHTML=l1.map(v=>{const on=(v==='全部')?(selDivs.size===0&&selCats.size===0):selDivs.has(v);return `<button class="dpill${on?' on':''}" onclick="toggleL1('${v}')">${v}</button>`;}).join('');const showL2=DIVS4.some(x=>selDivs.has(x));const w=document.getElementById('dfilter2');if(showL2){w.classList.remove('hide');w.innerHTML='<span class="l2lbl">細分</span>'+CATS.map(c=>`<button class="dpill l2${selCats.has(c)?' on':''}" onclick="toggleL2('${c}')">${c}</button>`).join('');}else{w.classList.add('hide');w.innerHTML='';}}
 function toggleL1(v){if(v==='全部'){selDivs.clear();selCats.clear();}else{if(selDivs.has(v))selDivs.delete(v);else selDivs.add(v);if(!DIVS4.some(x=>selDivs.has(x)))selCats.clear();}renderCalendar();}
 function toggleL2(c){if(selCats.has(c))selCats.delete(c);else selCats.add(c);renderCalendar();}
 function moveMonth(d){let m=calMonth+d,y=calYear;if(m<1){m=12;y--;}if(m>12){m=1;y++;}calMonth=m;calYear=y;renderCalendar();}
@@ -391,7 +393,9 @@ function openEvEditor(key,dd,i){
   document.getElementById('evEnd').value=(e&&e.end&&ymdOfIso(e.end)>st)?isoOfYmd(ymdOfIso(e.end)):'';
   document.getElementById('evTr').checked=!!(e&&e.kind==='教培');
   document.getElementById('evInfo').value=(e&&e.info)||'';
-  document.getElementById('evCat').value=(e&&e.cat)||'';
+  const curCat=(e&&e.cat)||'';
+  document.getElementById('evCat').innerHTML='<option value="">無</option>'+CATS.map(c=>`<option${c===curCat?' selected':''}>${c}</option>`).join('');
+  if(curCat&&!CATS.includes(curCat))document.getElementById('evCat').insertAdjacentHTML('beforeend',`<option selected>${esc(curCat)}</option>`);
   const ds=new Set((e&&e.divs)||[]);
   document.querySelectorAll('.edv').forEach(c=>c.checked=ds.has(c.value));
   document.getElementById('evDel').classList.toggle('hide',!e);
@@ -559,7 +563,7 @@ async function loadData(){
     const res=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'getData'})});
     const d=await res.json();
     if(d&&d.ok){
-      if(Array.isArray(d.activities)&&d.activities.length)ACTS=d.activities;
+      if(Array.isArray(d.activities)&&d.activities.length)ACTS=d.activities.filter(a=>a.unit!=='節慶');
       if(d.dayevents&&typeof d.dayevents==='object'&&Object.keys(d.dayevents).length)DAYS=d.dayevents;
       invalidateDays();
     }
@@ -581,7 +585,7 @@ function getEmail(){try{return sessionStorage.getItem('commaCalendarUser')||'';}
 function nameFromEmail(em){return (em||'').split('@')[0];}
 function setManager(){const em=getEmail().toLowerCase();isManager=MANAGERS.includes(em);}
 function showUser(){const u=getEmail();if(u)document.getElementById('uname').textContent=u;}
-function catOf(t){if(/競賽|盃|AMC|IMC|JHMC/.test(t))return '競賽';if(/造勢|名人堂|記者會|媒體|聯訪/.test(t))return '公關活動';if(/營隊|戰逗營|典禮|畢業|旅行|茶會|運動會|誓師|迎新|說明會|家說會|參訪|遊學|出遊/.test(t))return '活動';return '';}
+function catOf(t){if(/影音|影片|拍攝|開拍|直播|短影|Reels|reels|Vlog|vlog|YT|YouTube|剪輯|微電影|MV|宣傳片/.test(t))return '影音行銷';if(/競賽|盃|AMC|IMC|JHMC/.test(t))return '競賽';if(/造勢|名人堂|記者會|媒體|聯訪/.test(t))return '公關活動';if(/營隊|戰逗營|典禮|畢業|旅行|茶會|運動會|誓師|迎新|說明會|家說會|參訪|遊學|出遊/.test(t))return '活動';return '';}
 const TRAIN=[['2026-7','22','OKR','全體・管理職能・13:00–17:00',['全體']],['2026-8','24','OKR','全體・管理職能・13:00–17:00',['全體']],['2026-9','1','啟動大會','全體・核心職能・09:30–12:00',['全體']],['2026-9','15','銷售異議處理','國小・核心職能・09:00–12:00',['國小']],['2026-9','17','銷售異議處理','國中＋高中・核心職能・09:00–12:00',['國中','高中']],['2026-10','2','主管策略營','行政（主管）・管理職能・暫定',[]],['2026-10','6','點新星計畫','全體・通識職能・09:00–13:00',['全體']],['2026-11','3','固定每月教培日','暫定',[]],['2026-12','8','固定每月教培日（建議安排周年慶內容）','暫定',[]],['2027-1','12','固定每月教培日','暫定',[]]];
 /* 清掉雲端舊資料裡殘留的節日事件（主管自己新增／編輯過的 src:'user' 不動） */
 function stripLegacyFest(){
@@ -593,7 +597,8 @@ function stripLegacyFest(){
 function seededSet(){if(!Array.isArray(DAYS.__seeded))DAYS.__seeded=[];return DAYS.__seeded;}
 function seedOnce(tid,fn){const s=seededSet();if(s.indexOf(tid)>=0)return;fn();s.push(tid);}
 function normalizeDays(){
-  stripLegacyFest();
+  /* 節日只清一次：清完後主管日後自行新增含節日字樣的事件不會再被誤刪 */
+  seedOnce('stripfest',stripLegacyFest);
   monthKeys().forEach(k=>{for(const d in DAYS[k]){(DAYS[k][d]||[]).forEach(e=>{if(e.kind!=='教培'&&(e.cat===undefined||e.cat===null)){const c=catOf(e.text);if(c)e.cat=c;}});}});
   const rm=(k,d,sub)=>{if(DAYS[k]&&DAYS[k][d])DAYS[k][d]=DAYS[k][d].filter(e=>!(e.kind!=='教培'&&e.src!=='user'&&e.text.indexOf(sub)>=0));};
   seedOnce('rm:okr',()=>{rm('2026-7','22','OKR課程');rm('2026-8','24','OKR課程');rm('2026-9','1','全體夥伴大教培');});
